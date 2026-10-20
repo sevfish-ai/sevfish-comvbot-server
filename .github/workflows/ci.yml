@@ -58,6 +58,37 @@ jobs:
           done
           echo "MySQL 未就绪"; exit 1
 
+      - name: 初始化表结构（CI 是空库，本机开发库早已有表）
+        working-directory: fastapi
+        run: |
+          python - <<'PY'
+          import asyncio
+          import aiomysql
+          from app.config import settings
+          from app.services import (
+              robot_service, group_service, agent_service, knowledge_service,
+              table_service, workflow_service, task_service, skill_service,
+              memory_service, ext_user_service,
+          )
+
+          async def main():
+              pool = await aiomysql.create_pool(
+                  host=settings.MYSQL_HOST, port=settings.MYSQL_PORT,
+                  user=settings.MYSQL_USER, password=settings.MYSQL_PASSWORD,
+                  db=settings.MYSQL_DATABASE, autocommit=True, charset="utf8mb4",
+              )
+              for svc in (robot_service, group_service, agent_service, knowledge_service,
+                          table_service, workflow_service, task_service, skill_service,
+                          memory_service, ext_user_service):
+                  svc.set_pool(pool)
+                  await svc.ensure_table()
+              pool.close()
+              await pool.wait_closed()
+              print("schema ready")
+
+          asyncio.run(main())
+          PY
+
       - name: 跑测试
         working-directory: fastapi
         run: python -m pytest tests/ -q
