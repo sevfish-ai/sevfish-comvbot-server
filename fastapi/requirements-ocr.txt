@@ -1,0 +1,4 @@
+modelscope==1.39.1
+onnxruntime==1.29.0
+paddleocr==3.7.0
+paddlex==3.7.2

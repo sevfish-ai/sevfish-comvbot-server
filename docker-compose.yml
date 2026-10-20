@@ -1,0 +1,51 @@
+## docker compose up -d
+## 配置全部来自同目录的 .env（见 .env.example）；本文件不写任何密钥。
+name: sevfish-comvbot
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 里设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-aivbot}
+      MYSQL_USER: ${MYSQL_USER:-aivbot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 里设置 MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      # 容器内固定连 mysql 服务；对外监听 0.0.0.0
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      HOST: 0.0.0.0
+      PORT: "8765"
+      RELOAD: "false"   # 热重载会清空内存中的设备连接注册表，导致设备假掉线
+      UPLOAD_DIR: /app/uploads
+    ports:
+      # 默认只绑本机：外网请走反代 + 认证（见 docs/06-自建部署.md）
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ./fastapi/uploads:/app/uploads
+
+volumes:
+  mysql-data:

@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: pytest (真库)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: "%"
+          MYSQL_DATABASE: aivbot
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    env:
+      # 测试连的是"真库"（不是 mock），这几项必须与下面的 service 一致
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_DATABASE: aivbot
+      RELOAD: "false"
+      DEBUG: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # 开发机是 3.14；这里用 3.13 保证 runner 上一定有对应版本，
+          # setup-python 提供 3.14 之后可以改成 "3.14"
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: fastapi/requirements.txt
+
+      - name: 装依赖
+        run: pip install -r fastapi/requirements.txt
+
+      - name: 等 MySQL 就绪
+        run: |
+          for i in $(seq 1 60); do
+            mysqladmin ping -h 127.0.0.1 -uroot -proot --silent && exit 0
+            sleep 2
+          done
+          echo "MySQL 未就绪"; exit 1
+
+      - name: 跑测试
+        working-directory: fastapi
+        run: python -m pytest tests/ -q
+
+  import-check:
+    name: 导入与配置自检
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: fastapi/requirements.txt
+      - run: pip install -r fastapi/requirements.txt
+      - name: 应用能组装起来（不连库）
+        working-directory: fastapi
+        env:
+          DEBUG: "false"
+        run: |
+          python - <<'PY'
+          from app.main import app
+          from app.routes.websocket import router as ws_router
+
+          paths = set(app.openapi()["paths"])
+          for p in ("/admin/orgs", "/api/status", "/ext/login"):
+              assert p in paths, f"HTTP 路由缺失：{p}"
+          ws = {getattr(r, "path", "") for r in ws_router.routes}
+          assert any("/webserver/wework" in p for p in ws), f"WebSocket 路由缺失：{ws}"
+          print(f"HTTP 路由 {len(paths)} 条，关键 HTTP/WS 路由齐全")
+          PY

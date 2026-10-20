@@ -1,0 +1,6 @@
+.git
+.env
+*.pyc
+__pycache__/
+fastapi/uploads/
+fastapi/tests/
