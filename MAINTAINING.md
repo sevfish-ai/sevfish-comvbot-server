@@ -45,7 +45,7 @@ git tag vX.Y.Z && git push --tags
 - 服务端：起一个 MySQL 8.4 service → 装依赖 → `pytest tests/ -q`（244 例，连真库）；另有一个不连库的"导入与路由自检"job。
 - 客户端：JDK 11 + Android SDK 30 → `./gradlew assembleDebug`，APK 作为 artifact 上传。
 
-README 顶部的徽章地址里 `<你的账号>` 要换成实际 GitHub 账号。CI 失败时先看是"代码问题"还是"环境漂移"（runner 的 Python / Android SDK 版本），后者改 workflow 里的版本号即可。
+徽章地址已指向 `sevfish-ai`。CI 失败时先看是"代码问题"还是"环境漂移"（runner 的 Python / Android SDK 版本），后者改 workflow 里的版本号即可。
 
 ## 测试与冒烟
 

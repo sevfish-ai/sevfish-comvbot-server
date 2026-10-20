@@ -48,14 +48,14 @@
 
 ```bash
 # 服务端：Linux + MySQL 8 + Python 3.14（不需要 Docker）
-git clone <server-repo> && cd sevfish-comvbot-server
+git clone https://github.com/sevfish-ai/sevfish-comvbot-server.git && cd sevfish-comvbot-server
 python3 -m venv ../venv && ../venv/bin/pip install -r fastapi/requirements.txt
 cp .env.example .env && $EDITOR .env      # 填 MYSQL_* 与 SITE_URL
 cd fastapi && ../venv/bin/python run.py    # 前台先跑通；长期运行用 systemd（见 06）
 # 浏览器打开 http://<你的IP>:8765/admin/orgs
 
 # 客户端（需要 JDK 8/11 + Android SDK，产物是 debug APK）
-git clone <app-repo> && cd sevfish-comvbot-app
+git clone https://github.com/sevfish-ai/sevfish-comvbot-app.git && cd sevfish-comvbot-app
 ./gradlew assembleDebug
 ```
 
